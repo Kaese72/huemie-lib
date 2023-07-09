@@ -1,7 +1,11 @@
 package logging
 
 import (
+	"fmt"
 	"runtime"
+
+	"github.com/Kaese72/huemie-lib/liberrors"
+	"github.com/pkg/errors"
 )
 
 type Logger interface {
@@ -26,12 +30,37 @@ func Info(msg string, data ...map[string]interface{}) {
 	logger.Log(msg, 6, data...)
 }
 
+func Warn(msg string, data ...map[string]interface{}) {
+	logger.Log(msg, 4, data...)
+}
+
 func Error(msg string, data ...map[string]interface{}) {
 	logger.Log(msg, 3, data...)
 }
 
 func Fatal(msg string, data ...map[string]interface{}) {
 	logger.Log(msg, 1, data...)
+}
+
+func extractErrInfo(err error) map[string]interface{} {
+	labels := map[string]interface{}{}
+	earlyTracer := liberrors.EarliestTracer(err)
+	if earlyTracer != nil {
+		labels["trace.early"] = fmt.Sprintf("%+v", earlyTracer.StackTrace())
+	}
+	err = errors.Cause(err)
+	if err != nil {
+		labels["cause.error"] = err.Error()
+	}
+	return labels
+}
+
+func ErrError(err error, data ...map[string]interface{}) {
+	logger.Log(err.Error(), 3, append(data, extractErrInfo(err))...)
+}
+
+func ErrWarn(err error, data ...map[string]interface{}) {
+	logger.Log(err.Error(), 4, append(data, extractErrInfo(err))...)
 }
 
 func SetDebugLogging(flag bool) {
