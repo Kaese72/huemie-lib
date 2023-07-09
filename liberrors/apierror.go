@@ -1,6 +1,8 @@
 package liberrors
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type ApiReason int
 
@@ -10,29 +12,29 @@ const (
 	InternalError ApiReason = http.StatusInternalServerError
 )
 
-type apiError struct {
+type ApiError struct {
 	Reason ApiReason
-	err    error
+	Err    error
 }
 
-func (err apiError) Error() string {
-	return err.err.Error()
+func (err ApiError) Error() string {
+	return err.Err.Error()
 }
 
-func (err apiError) Unwrap() error {
-	return err.err
+func (err ApiError) Unwrap() error {
+	return err.Err
 }
 
-func (err apiError) Cause() error {
-	return err.err
+func (err ApiError) Cause() error {
+	return err.Err
 }
 
-func ApiError(reason ApiReason, err error) error {
+func NewApiError(reason ApiReason, err error) error {
 	if err == nil {
 		return nil
 	}
-	return apiError{
+	return ApiError{
 		Reason: reason,
-		err:    err,
+		Err:    err,
 	}
 }
