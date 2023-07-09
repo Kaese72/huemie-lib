@@ -29,11 +29,11 @@ func (err ApiError) Cause() error {
 	return err.Err
 }
 
-func NewApiError(reason ApiReason, err error) error {
+func NewApiError(reason ApiReason, err error) *ApiError {
 	if err == nil {
 		return nil
 	}
-	return ApiError{
+	return &ApiError{
 		Reason: reason,
 		Err:    err,
 	}
