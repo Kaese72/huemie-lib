@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -169,6 +170,43 @@ func NumericOperators(column string) map[string]OperatorFunc {
 			return column + " < ?", []any{v}, nil
 		},
 		"numeric-gt": func(value string) (string, []any, error) {
+			v, err := parse(value)
+			if err != nil {
+				return "", nil, err
+			}
+			return column + " > ?", []any{v}, nil
+		},
+	}
+}
+
+// DateOperators returns "date-eq", "date-lt" (before), and "date-gt"
+// (after) OperatorFuncs for column, comparing against a value parsed as
+// RFC3339 (e.g. "2026-09-27T00:00:00Z"). Each rejects a value that doesn't
+// parse with a 400 error.
+func DateOperators(column string) map[string]OperatorFunc {
+	parse := func(value string) (time.Time, error) {
+		asTime, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return time.Time{}, huma.Error400BadRequest(fmt.Sprintf("filter value %q must be an RFC3339 timestamp", value))
+		}
+		return asTime, nil
+	}
+	return map[string]OperatorFunc{
+		"date-eq": func(value string) (string, []any, error) {
+			v, err := parse(value)
+			if err != nil {
+				return "", nil, err
+			}
+			return column + " = ?", []any{v}, nil
+		},
+		"date-lt": func(value string) (string, []any, error) {
+			v, err := parse(value)
+			if err != nil {
+				return "", nil, err
+			}
+			return column + " < ?", []any{v}, nil
+		},
+		"date-gt": func(value string) (string, []any, error) {
 			v, err := parse(value)
 			if err != nil {
 				return "", nil, err

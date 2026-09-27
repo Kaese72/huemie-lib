@@ -98,6 +98,24 @@ func TestNumericOperators(t *testing.T) {
 	})
 }
 
+func TestDateOperators(t *testing.T) {
+	ops := DateOperators("created")
+	t.Run("valid", func(t *testing.T) {
+		fragment, args, err := ops["date-gt"]("2026-09-27T00:00:00Z")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if fragment != "created > ?" || len(args) != 1 {
+			t.Fatalf("unexpected result: fragment=%q args=%v", fragment, args)
+		}
+	})
+	t.Run("malformed", func(t *testing.T) {
+		if _, _, err := ops["date-eq"]("not a date"); err == nil {
+			t.Fatal("expected an error for a non-RFC3339 value")
+		}
+	})
+}
+
 func TestBoolOperator(t *testing.T) {
 	ops := BoolOperator("flag")
 	if _, _, err := ops["bool-eq"]("true"); err != nil {
