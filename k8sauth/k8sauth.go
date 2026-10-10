@@ -11,6 +11,7 @@ package k8sauth
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -25,10 +26,33 @@ const namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 // NewInClusterClientset builds a Kubernetes clientset from this pod's own
 // in-cluster credentials, for use with RequireServiceAccount.
-func NewInClusterClientset() (*kubernetes.Clientset, error) {
+//
+// apiserverProxyURL, if non-empty, routes this clientset's traffic through
+// that HTTP CONNECT proxy (e.g. "http://kube-apiserver-proxy:6443") instead
+// of the apiserver's ClusterIP directly -- some deployments need this because
+// NetworkPolicy can't reliably restrict egress straight to the ClusterIP
+// (kube-proxy's DNAT to the real backend happens before NetworkPolicy is
+// enforced). This is deliberately passed in rather than left for
+// client-go/rest's default of consulting HTTPS_PROXY/the process
+// environment: this process may make other outbound HTTPS calls (e.g. to a
+// cloud service) that must never be routed through an apiserver-only proxy,
+// and a blanket HTTPS_PROXY env var would silently do exactly that. With
+// apiserverProxyURL empty, the environment is explicitly ignored too, so
+// this clientset's behavior never depends on an env var set for an unrelated
+// purpose.
+func NewInClusterClientset(apiserverProxyURL string) (*kubernetes.Clientset, error) {
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("load in-cluster config: %w", err)
+	}
+	if apiserverProxyURL != "" {
+		proxyURL, err := url.Parse(apiserverProxyURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse apiserver proxy URL: %w", err)
+		}
+		cfg.Proxy = http.ProxyURL(proxyURL)
+	} else {
+		cfg.Proxy = func(*http.Request) (*url.URL, error) { return nil, nil }
 	}
 	return kubernetes.NewForConfig(cfg)
 }
